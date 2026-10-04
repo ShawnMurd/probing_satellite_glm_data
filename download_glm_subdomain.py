@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
 """
-download_glm_frontrange.py
+download_glm_subdomain.py
 ==========================
 
 Download GOES Geostationary Lightning Mapper (GLM) Level-2 LCFA data from
-NOAA's public AWS S3 archive and keep only lightning over the Colorado
-Front Range.
+NOAA's public AWS S3 archive and keep only lightning over the desired subdomain.
 
 How it works
 ------------
 1. Lists GLM-L2-LCFA files on S3 for the requested date/hour window.
 2. Downloads files one at a time (stops before exceeding ``--max-gb``).
-3. Subsets each file to flash-level data over the Front Range bounding box:
+3. Subsets each file to flash-level data over the desired subdomain bounding box:
      * group and event data are dropped entirely (flash-level only);
      * only flashes with ``flash_quality_flag == 0`` whose centroid falls
        inside the box are kept.
@@ -26,13 +25,13 @@ How it works
 Examples
 --------
 # Estimate sizes only (no downloads)
-python download_glm_frontrange.py --start 2024-06-01 --end 2024-06-30 --dry-run
+python download_glm_subdomain.py --start 2024-06-01 --end 2024-06-30 --dry-run
 
 # June 2024, GOES-16, all hours, stop at 100 GB downloaded
-python download_glm_frontrange.py --start 2024-06-01 --end 2024-06-30
+python download_glm_subdomain.py --start 2024-06-01 --end 2024-06-30
 
 # Afternoon/evening convection only (18-23 UTC), GOES-19
-python download_glm_frontrange.py --start 2025-06-01 --end 2025-06-30 \
+python download_glm_subdomain.py --start 2025-06-01 --end 2025-06-30 \
     --satellite 19 --hours 18-23
 
 Notes
@@ -71,10 +70,18 @@ BUCKETS = {
 PRODUCT = "GLM-L2-LCFA"  # Lightning Cluster-Filter Algorithm (events/groups/flashes)
 
 # Colorado Front Range corridor
-FRONT_RANGE = {
-    "lat_min": 38.6,
+#DOWNLOAD_SUBDOMAIN = {
+#    "lat_min": 38.6,
+#    "lat_max": 41.0,
+#    "lon_min": -106.13,
+#    "lon_max": -104.8,
+#}
+
+# All of Western Colorado
+DOWNLOAD_SUBDOMAIN = {
+    "lat_min": 37,
     "lat_max": 41.0,
-    "lon_min": -106.13,
+    "lon_min": -109.05,
     "lon_max": -104.8,
 }
 
@@ -183,13 +190,13 @@ def subset_to_bbox(src_path: str, dst_path: Path, bbox: dict) -> bool:
         }
 
         sub.attrs["subset_note"] = (
-            f"Subset to Front Range box: lat {bbox['lat_min']}..{bbox['lat_max']}, "
+            f"Subset to subdomain box: lat {bbox['lat_min']}..{bbox['lat_max']}, "
             f"lon {bbox['lon_min']}..{bbox['lon_max']} (flash-centroid based, "
             "flash_quality_flag == 0 only, group/event data dropped)"
         )
         sub.attrs["history"] = (
             f"{dt.datetime.utcnow():%Y-%m-%dT%H:%M:%SZ} subset by "
-            "download_glm_frontrange.py"
+            "download_glm_subdomain.py"
         )
 
         dst_path.parent.mkdir(parents=True, exist_ok=True)
@@ -241,7 +248,7 @@ def combine_day(outdir: Path, year: int, doy: int) -> Path | None:
     }
     combined.attrs["history"] = (
         f"{dt.datetime.utcnow():%Y-%m-%dT%H:%M:%SZ} combined {len(files)} hourly "
-        "subsets by download_glm_frontrange.py"
+        "subsets by download_glm_subdomain.py"
     )
 
     dst = outdir / f"{year}" / f"{doy:03d}.nc"
@@ -282,7 +289,7 @@ def parse_hours(text: str | None):
 
 def parse_args(argv=None):
     p = argparse.ArgumentParser(
-        description="Download GOES GLM L2 data and subset to the CO Front Range.",
+        description="Download GOES GLM L2 data and subset to the desired subdomain.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     p.add_argument("--start", required=True, help="Start date, YYYY-MM-DD (inclusive)")
@@ -291,7 +298,7 @@ def parse_args(argv=None):
                    help="GOES satellite number (16=East<=2024, 19=East>=2025, 18=West)")
     p.add_argument("--hours", default=None,
                    help="UTC hours to include, e.g. '18-23' or '18,20,22'. Default: all")
-    p.add_argument("--outdir", default="glm_front_range", help="Output directory")
+    p.add_argument("--outdir", default="glm_data", help="Output directory")
     p.add_argument("--max-gb", type=float, default=100.0,
                    help="Stop before cumulative downloads exceed this many GB")
     p.add_argument("--keep-raw", action="store_true",
@@ -302,11 +309,11 @@ def parse_args(argv=None):
                    help="Only report the total size of matching files; download nothing")
 
     # Force user to change lat/lon coordinates of box in this script manually
-    # b/c FRONT_RANGE from this script is used by other scripts
-    #p.add_argument("--lat-min", type=float, default=FRONT_RANGE["lat_min"])
-    #p.add_argument("--lat-max", type=float, default=FRONT_RANGE["lat_max"])
-    #p.add_argument("--lon-min", type=float, default=FRONT_RANGE["lon_min"])
-    #p.add_argument("--lon-max", type=float, default=FRONT_RANGE["lon_max"])
+    # b/c DOWNLOAD_SUBDOMAIN from this script is used by other scripts
+    #p.add_argument("--lat-min", type=float, default=DOWNLOAD_SUBDOMAIN["lat_min"])
+    #p.add_argument("--lat-max", type=float, default=DOWNLOAD_SUBDOMAIN["lat_max"])
+    #p.add_argument("--lon-min", type=float, default=DOWNLOAD_SUBDOMAIN["lon_min"])
+    #p.add_argument("--lon-max", type=float, default=DOWNLOAD_SUBDOMAIN["lon_max"])
 
     return p.parse_args(argv)
 
@@ -319,7 +326,7 @@ def main(argv=None) -> int:
     start = dt.date.fromisoformat(args.start)
     end = dt.date.fromisoformat(args.end)
     hours = parse_hours(args.hours)
-    bbox = FRONT_RANGE
+    bbox = DOWNLOAD_SUBDOMAIN
     bucket = BUCKETS[args.satellite]
     outdir = Path(args.outdir)
     cap_bytes = args.max_gb * GB
@@ -402,7 +409,7 @@ def main(argv=None) -> int:
 
             if n_kept % 25 == 0 and n_kept > 0:
                 print(f"  ... {total_bytes / GB:6.2f} GB downloaded, "
-                      f"{n_kept} files with Front Range lightning "
+                      f"{n_kept} files with subdomain lightning "
                       f"({kept_bytes / GB:.3f} GB kept)")
 
         print(f"hour {prefix}: running total {total_bytes / GB:.2f} GB, "
@@ -427,8 +434,8 @@ def _print_summary(n_files, n_kept, n_empty, n_skipped, total_bytes, kept_bytes,
     else:
         print(f"Files examined          : {n_files}")
         print(f"Already on disk (skip)  : {n_skipped}")
-        print(f"Files with FR lightning : {n_kept}")
-        print(f"Files empty over FR     : {n_empty}")
+        print(f"Files with subdomain lightning : {n_kept}")
+        print(f"Files empty over subdomain     : {n_empty}")
         print(f"Downloaded volume       : {total_bytes / GB:.2f} GB")
         print(f"Retained subset volume  : {kept_bytes / GB:.3f} GB")
     print("=" * 60)

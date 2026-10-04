@@ -1,1 +1,1 @@
-# Examining Lightning Activity Along the Front Range Using GLM Data
+# Examining Lightning Activity in Western Colorado Using GLM Data

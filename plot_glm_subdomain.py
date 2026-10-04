@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-plot_front_range_domain.py
+plot_glm_subdomain.py
 ==========================
 
-Plot the FRONT_RANGE bounding box defined in ``download_glm_frontrange.py``
+Plot the subdomain bounding box defined in ``download_glm_subdomain.py``
 on a Cartopy map with underlying topography, rivers, county borders, and
 state borders.
 
@@ -23,10 +23,10 @@ use (internet required once; they are cached afterwards).
 Examples
 --------
 # Save to the default PNG and open an interactive window
-python plot_front_range_domain.py
+python plot_glm_subdomain.py
 
 # Save to a specific file, no interactive window
-python plot_front_range_domain.py --out front_range_domain.png --no-show
+python plot_glm_subdomain.py --out subdomain.png --no-show
 
 Requires: cartopy, matplotlib, numpy, xarray, netCDF4
     conda install -c conda-forge cartopy matplotlib numpy xarray netcdf4
@@ -44,11 +44,14 @@ import xarray as xr
 from matplotlib.colors import Normalize
 from matplotlib.patches import Rectangle
 
-from download_glm_frontrange import FRONT_RANGE
+from download_glm_subdomain import DOWNLOAD_SUBDOMAIN
 
 # Padding (degrees) added around the domain so the box doesn't touch the
 # map edges.
 PAD = 1.0
+
+# The subdomain bounding box defined in download_glm_subdomain.py
+SUBDOMAIN = DOWNLOAD_SUBDOMAIN
 
 # NOAA ETOPO 2022 global relief model (60 arc-second), served via OPeNDAP.
 # No login required; only the requested bbox is transferred.
@@ -147,11 +150,11 @@ def build_map(ax, bbox: dict, topo: bool = True) -> None:
 
 
 def draw_domain_box(ax, bbox: dict) -> None:
-    """Overlay the FRONT_RANGE bounding box and annotate its corners."""
+    """Overlay the subdomain bounding box and annotate its corners."""
     width = bbox["lon_max"] - bbox["lon_min"]
     height = bbox["lat_max"] - bbox["lat_min"]
 
-    # Shaded box containing the FRONT_RANGE domain (commented out)
+    # Shaded box containing the subdomain (commented out)
     #rect = Rectangle(
     #    (bbox["lon_min"], bbox["lat_min"]),
     #    width,
@@ -180,7 +183,7 @@ def draw_domain_box(ax, bbox: dict) -> None:
     #ax.text(
     #    bbox["lon_min"] + width / 2,
     #    bbox["lat_max"] + 0.08,
-    #    "FRONT_RANGE",
+    #    "SUBDOMAIN",
     #    transform=ccrs.PlateCarree(),
     #    ha="center",
     #    va="bottom",
@@ -209,10 +212,10 @@ def draw_domain_box(ax, bbox: dict) -> None:
 
 def parse_args(argv=None):
     p = argparse.ArgumentParser(
-        description="Plot the FRONT_RANGE GLM domain with Cartopy.",
+        description="Plot the subdomain GLM domain with Cartopy.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    p.add_argument("--out", default="front_range_domain.png",
+    p.add_argument("--out", default="glm_subdomain.png",
                    help="Output image file (PNG/PDF/etc. by extension)")
     p.add_argument("--no_save", action="store_true",
                    help="Save the output image to the specified file")
@@ -226,7 +229,7 @@ def parse_args(argv=None):
 
 def main(argv=None) -> int:
     args = parse_args(argv)
-    bbox = FRONT_RANGE
+    bbox = SUBDOMAIN
 
     central_lon = (bbox["lon_min"] + bbox["lon_max"]) / 2
     central_lat = (bbox["lat_min"] + bbox["lat_max"]) / 2
@@ -247,7 +250,7 @@ def main(argv=None) -> int:
                      pad=0.05, label="Elevation (m)")
 
     ax.set_title(
-        "GLM Front Range Domain\n"
+        "GLM Subdomain Domain\n"
         f"lat {bbox['lat_min']:.2f}..{bbox['lat_max']:.2f}, "
         f"lon {bbox['lon_min']:.2f}..{bbox['lon_max']:.2f}",
         fontsize=12,

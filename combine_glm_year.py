@@ -3,8 +3,8 @@
 combine_glm_year.py
 ====================
 
-Combine all daily GLM Front Range subset files (``<outdir>/YYYY/DDD.nc``,
-as produced by ``download_glm_frontrange.py``) for one year into a single
+Combine all daily GLM subset files (``<outdir>/YYYY/DDD.nc``,
+as produced by ``download_glm_subdomain.py``) for one year into a single
 netCDF file: ``<outdir>/YYYY.nc``.
 
 If the destination file already exists, it is deleted before the new one
@@ -13,7 +13,7 @@ is written.
 Usage
 -----
 python combine_glm_year.py 2022
-python combine_glm_year.py 2022 --outdir glm_front_range
+python combine_glm_year.py 2022 --outdir glm_data
 """
 
 from __future__ import annotations
@@ -72,11 +72,11 @@ def combine_year(outdir: Path, year: int) -> Path:
 
 def parse_args(argv=None):
     p = argparse.ArgumentParser(
-        description="Combine daily GLM Front Range subsets for one year into a single netCDF file.",
+        description="Combine daily GLM subsets for one year into a single netCDF file.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     p.add_argument("year", type=int, help="Year to combine, e.g. 2022")
-    p.add_argument("--outdir", default="glm_front_range",
+    p.add_argument("--outdir", default="glm_data",
                    help="Directory containing <year>/ subfolders of daily .nc files")
     return p.parse_args(argv)
 
