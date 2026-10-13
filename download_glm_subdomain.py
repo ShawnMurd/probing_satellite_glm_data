@@ -274,6 +274,18 @@ def _combine_and_report(outdir: Path, day_key: tuple[int, int]) -> None:
               f"({dst.stat().st_size / GB:.3f} GB)")
 
 
+def _record_no_lightning_day(outdir: Path, year: int, doy: int) -> None:
+    """Append a day with zero subdomain lightning to <outdir>/no_lightning_days.txt."""
+    outdir.mkdir(parents=True, exist_ok=True)
+    log_path = outdir / "no_lightning_days.txt"
+    entry = f"{year} {doy:03d}"
+    if log_path.exists() and entry in log_path.read_text().splitlines():
+        return
+    with open(log_path, "a") as f:
+        f.write(entry + "\n")
+    print(f"No lightning for day {year}/{doy:03d} -> logged to {log_path}")
+
+
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
@@ -348,12 +360,16 @@ def main(argv=None) -> int:
     n_skipped_existing = 0
     kept_bytes = 0
     current_day = None  # (year, doy) of the day currently being processed
+    day_had_lightning = False
 
     for prefix in iter_prefixes(start, end, hours):
         year_str, doy_str, _hour_str = prefix.split("/")
         day_key = (int(year_str), int(doy_str))
         if not args.dry_run and current_day is not None and day_key != current_day:
             _combine_and_report(outdir, current_day)
+            if not day_had_lightning:
+                _record_no_lightning_day(outdir, *current_day)
+            day_had_lightning = False
         current_day = day_key
 
         for key, size in list_objects(client, bucket, prefix):
@@ -367,6 +383,7 @@ def main(argv=None) -> int:
             dst = outdir / Path(key).parent.relative_to(PRODUCT) / Path(key).name
             if dst.exists() and not args.overwrite:
                 n_skipped_existing += 1
+                day_had_lightning = True
                 continue
 
             # Enforce the download cap *before* fetching the file.
@@ -374,6 +391,8 @@ def main(argv=None) -> int:
                 print(f"\nReached download cap of {args.max_gb:g} GB "
                       f"({total_bytes / GB:.2f} GB used). Stopping.")
                 _combine_and_report(outdir, current_day)
+                if not day_had_lightning:
+                    _record_no_lightning_day(outdir, *current_day)
                 _print_summary(n_files, n_kept, n_empty, n_skipped_existing,
                                total_bytes, kept_bytes)
                 return 0
@@ -404,6 +423,7 @@ def main(argv=None) -> int:
             if kept:
                 n_kept += 1
                 kept_bytes += dst.stat().st_size
+                day_had_lightning = True
             else:
                 n_empty += 1
 
@@ -417,6 +437,8 @@ def main(argv=None) -> int:
 
     if not args.dry_run and current_day is not None:
         _combine_and_report(outdir, current_day)
+        if not day_had_lightning:
+            _record_no_lightning_day(outdir, *current_day)
 
     _print_summary(n_files, n_kept, n_empty, n_skipped_existing,
                    total_bytes, kept_bytes, dry_run=args.dry_run)
