@@ -1,4 +1,8 @@
 .vscode/
 __pycache__/
-glm_data/
 .ipynb_checkpoints/
+
+# GLM data
+glm_data/20*/
+glm_data/test
+glm_data/README_download.txt
